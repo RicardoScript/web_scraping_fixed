@@ -1,5 +1,7 @@
 import { chromium } from "playwright";
 import { DatabaseOperations, Collections, ErrorLogsModel } from '../Models/database.js';
+import fs from 'fs';
+import path from 'path';
 
 export const obtenerAntecedentesPenales = async (cedula) => {
   let browser = null;
@@ -7,223 +9,256 @@ export const obtenerAntecedentesPenales = async (cedula) => {
   try {
     console.log(`🔍 Iniciando consulta de antecedentes penales para cédula: ${cedula}`);
 
-    // Iniciar Playwright con evasión mejorada
     browser = await chromium.launch({
-      headless: false, // Visible para noVNC
+      headless: false,
       executablePath: '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--display=:99',
-        '--disable-blink-features=AutomationControlled', // Oculta detección de automatización
+        '--disable-blink-features=AutomationControlled',
         '--disable-dev-shm-usage',
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor',
       ],
     });
+
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       viewport: { width: 1920, height: 1080 },
       locale: 'es-EC',
       timezoneId: 'America/Guayaquil',
-      extraHTTPHeaders: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'es-EC,es;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1',
-      },
-      permissions: ['geolocation'],
-      geolocation: { latitude: -0.1807, longitude: -78.4678 }, // Quito, Ecuador
     });
 
-    // Ocultar webdriver
     await context.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
     });
 
     const page = await context.newPage();
-
-    console.log(`🌐 Navegando a página de antecedentes penales...`);
+    
     try {
-      await page.goto('https://certificados.ministeriodelinterior.gob.ec/gestorcertificados/antecedentes/', {
-        waitUntil: 'domcontentloaded', // Menos estricto que networkidle
-        timeout: 90000, // Aumentado a 90 segundos
+      await page.goto('https://certificados.ministeriodelinterior.gob.ec/gestorcertificados/antecedentes/', { 
+        waitUntil: 'domcontentloaded', 
+        timeout: 90000 
       });
+      console.log(`🌐 Página cargada: ${await page.title()}`);
     } catch (error) {
-      console.error('⚠️ Error en page.goto:', error.message);
-      const pageContent = await page.content();
-      console.log('Contenido de la página:', pageContent.substring(0, 1000));
-      throw new Error(`No se pudo cargar la página: ${error.message}`);
+      console.log('⚠️ Error al cargar la página, continuando...');
     }
 
-    console.log(`📄 Página cargada. Título: ${await page.title()}`);
-
-    // Verificar bloqueo de Incapsula
-    const isIncapsulaBlocked = await page.evaluate(() => {
-      return !!document.querySelector('#main-iframe') || document.body.innerHTML.includes('Incapsula');
-    });
-
-    if (isIncapsulaBlocked) {
-      console.log('⚠️ Bloqueo de Incapsula detectado. Esperando resolución manual...');
-      console.log('Abre noVNC para resolver el challenge de Incapsula (espera 10-30 segundos o interactúa).');
-
-      let attempts = 0;
-      const maxAttempts = 120; // 10 minutos
-      while (attempts < maxAttempts) {
-        const stillBlocked = await page.evaluate(() => {
-          return !!document.querySelector('#main-iframe') || document.body.innerHTML.includes('Incapsula');
-        });
-        if (!stillBlocked) {
-          console.log('✅ Bloqueo de Incapsula resuelto, continuando...');
-          await page.waitForLoadState('domcontentloaded');
-          break;
+    // --- Manejo de Incapsula CORREGIDO ---
+    try {
+      const isBlocked = await page.evaluate(() => {
+        return document && document.body && document.body.innerHTML && 
+               document.body.innerHTML.includes('Incapsula');
+      });
+      
+      if (isBlocked) {
+        console.log('⚠️ Bloqueo de Incapsula detectado. Usa noVNC para resolverlo...');
+        let attempts = 0;
+        while (attempts < 120) {
+          const stillBlocked = await page.evaluate(() => {
+            return document && document.body && document.body.innerHTML && 
+                   document.body.innerHTML.includes('Incapsula');
+          });
+          if (!stillBlocked) break;
+          attempts++;
+          await page.waitForTimeout(5000);
         }
-        attempts++;
-        await page.waitForTimeout(5000);
+        if (attempts >= 120) throw new Error('Incapsula bloqueando la página.');
       }
-
-      if (attempts >= maxAttempts) {
-        await browser.close();
-        return {
-          success: false,
-          error: 'incapsula_blocked',
-          message: 'Se detectó un bloqueo de Incapsula. Resuélvelo mediante noVNC (espera o interactúa con la página).',
-        };
-      }
+    } catch (incapsulaError) {
+      console.log('ℹ️ No se pudo verificar Incapsula:', incapsulaError.message);
     }
 
-    // Aceptar cookies
+    // --- Manejo de cookies ---
     try {
       await page.waitForSelector('.cc-btn.cc-dismiss', { timeout: 5000 });
       await page.click('.cc-btn.cc-dismiss');
-      console.log(`✅ Cookies aceptadas`);
-    } catch (e) {
-      console.log(`ℹ️ No se encontró banner de cookies`);
+      console.log('✅ Cookies aceptadas');
+    } catch (error) { 
+      console.log('ℹ️ No se encontró banner de cookies');
     }
 
-    // Verificar hCaptcha
-    const isHCaptchaPresent = await page.evaluate(() => {
-      return !!document.querySelector('div.h-captcha') || document.body.innerHTML.includes('hcaptcha');
-    });
+    // --- Aceptar términos y condiciones ---
+    const textosBoton = ['Aceptar', 'Acepto', 'Continuar'];
+    let botonEncontrado = false;
 
-    if (isHCaptchaPresent) {
-      console.log('⚠️ hCaptcha detectado. Esperando resolución manual...');
-      console.log('Abre noVNC para resolver el hCaptcha.');
-
-      let attempts = 0;
-      const maxAttempts = 60; // 5 minutos
-      while (attempts < maxAttempts) {
-        const captchaStillPresent = await page.evaluate(() => {
-          return !!document.querySelector('div.h-captcha') || document.body.innerHTML.includes('hcaptcha');
-        });
-        if (!captchaStillPresent) {
-          console.log('✅ hCaptcha resuelto, continuando...');
+    // Buscar botón en la página principal
+    for (const texto of textosBoton) {
+      try {
+        const boton = await page.$(`button:has-text("${texto}")`);
+        if (boton) {
+          await boton.click();
+          botonEncontrado = true;
+          console.log(`✅ Botón "${texto}" clickeado`);
+          await page.waitForTimeout(2000);
           break;
         }
-        attempts++;
-        await page.waitForTimeout(5000);
-      }
-
-      if (attempts >= maxAttempts) {
-        await browser.close();
-        return {
-          success: false,
-          error: 'captcha_required',
-          message: 'Se detectó un hCaptcha. Resuélvelo mediante noVNC.',
-        };
+      } catch (error) {
+        console.log(`⚠️ Error al hacer clic en botón ${texto}:`, error.message);
       }
     }
 
-    // Aceptar términos y condiciones
-    console.log(`✅ Intentando aceptar términos y condiciones...`);
-    try {
-      await page.waitForSelector('button.ui-button-text-only:has-text("Aceptar")', { timeout: 15000 });
-      await page.click('button.ui-button-text-only:has-text("Aceptar")');
-      console.log(`✅ Términos aceptados`);
-    } catch (e) {
+    // Buscar botón en iframes si no se encontró
+    if (!botonEncontrado) {
       try {
-        await page.waitForSelector('button:has-text("Aceptar")', { timeout: 15000 });
-        await page.click('button:has-text("Aceptar")');
-        console.log(`✅ Términos aceptados con selector alternativo`);
-      } catch (e2) {
-        console.log('⚠️ No se encontró el botón de aceptar términos. Inspeccionando...');
-        const pageContent = await page.content();
-        console.log('Contenido de la página:', pageContent.substring(0, 1000));
-        throw new Error('No se encontró el botón de aceptar términos. Verifica el sitio en noVNC.');
+        const frames = page.frames();
+        for (const frame of frames) {
+          for (const texto of textosBoton) {
+            try {
+              const boton = await frame.$(`button:has-text("${texto}")`);
+              if (boton) {
+                await boton.click();
+                botonEncontrado = true;
+                console.log(`✅ Botón "${texto}" clickeado dentro de iframe`);
+                await page.waitForTimeout(2000);
+                break;
+              }
+            } catch (error) {
+              console.log(`⚠️ Error en iframe con botón ${texto}:`, error.message);
+            }
+          }
+          if (botonEncontrado) break;
+        }
+      } catch (error) {
+        console.log('⚠️ Error al buscar en iframes:', error.message);
       }
     }
 
-    // Llenar cédula
-    console.log(`📝 Llenando cédula: ${cedula}`);
-    await page.waitForSelector('#txtCi', { timeout: 30000 });
-    await page.fill('#txtCi', cedula);
-    await page.click('#btnSig1');
+    if (!botonEncontrado) {
+      console.warn('⚠️ No se encontró ningún botón de aceptar términos. Continuando...');
+    }
 
-    // Llenar motivo
-    console.log(`📋 Llenando motivo de consulta...`);
-    await page.waitForSelector('#txtMotivo', { timeout: 90000 });
-    await page.fill('#txtMotivo', 'Consulta Personal');
-    await page.waitForSelector('#btnSig2', { timeout: 90000 });
-    await page.click('#btnSig2');
+    // --- Llenar cédula y motivo ---
+    try {
+      await page.waitForSelector('#txtCi', { timeout: 30000 });
+      await page.fill('#txtCi', cedula);
+      await page.click('#btnSig1');
+      console.log('✅ Cédula ingresada');
+    } catch (error) {
+      console.log('❌ Error al ingresar cédula:', error.message);
+      throw new Error('No se pudo ingresar la cédula');
+    }
 
-    // Obtener resultados
-    await page.waitForSelector('#dvAntecedent1', { timeout: 30000 });
-    const resultado = await page.textContent('#dvAntecedent1');
-    const nombre = await page.textContent('#dvName1');
+    try {
+      await page.waitForSelector('#txtMotivo', { timeout: 30000 });
+      await page.fill('#txtMotivo', 'Consulta Personal');
+      await page.click('#btnSig2');
+      console.log('✅ Motivo ingresado');
+    } catch (error) {
+      console.log('❌ Error al ingresar motivo:', error.message);
+      throw new Error('No se pudo ingresar el motivo');
+    }
 
-    const resultadoFormateado = resultado.trim().toUpperCase() === 'NO'
+    // --- Obtener resultados ---
+    let resultadoRaw = '';
+    let nombreRaw = '';
+
+    try {
+      await page.waitForSelector('#dvAntecedent1', { timeout: 30000 });
+      resultadoRaw = await page.textContent('#dvAntecedent1') || '';
+      nombreRaw = await page.textContent('#dvName1') || '';
+      console.log('✅ Resultados obtenidos');
+    } catch (error) {
+      console.log('❌ Error al obtener resultados:', error.message);
+      throw new Error('No se pudieron obtener los resultados');
+    }
+
+    const resultadoFormateado = resultadoRaw.trim().toUpperCase() === 'NO'
       ? 'No tiene antecedentes penales'
       : 'Tiene antecedentes penales';
 
-    const tieneAntecedentes = resultado.trim().toUpperCase() !== 'NO';
+    const tieneAntecedentes = resultadoRaw.trim().toUpperCase() !== 'NO';
+
+    // --- Obtener información del certificado ---
+    let urlCertificado = null;
+    let tieneBotonCertificado = false;
+    
+    try {
+      console.log('📄 Buscando botón "Visualizar Certificado"...');
+      
+      // Esperar a que la página cargue completamente
+      await page.waitForTimeout(3000);
+      
+      // Buscar el botón por el texto EXACTO
+      const botonCertificado = await page.$('button:has-text("Visualizar Certificado")');
+      
+      if (botonCertificado) {
+        console.log('✅ Botón "Visualizar Certificado" encontrado');
+        tieneBotonCertificado = true;
+        
+        // Obtener la URL actual para referencia
+        const urlActual = page.url();
+        console.log(`🌐 URL actual: ${urlActual}`);
+        
+        // Obtener información sobre qué hace el botón
+        const accionBoton = await page.evaluate((boton) => {
+          if (!boton) return null;
+          return {
+            onclick: boton.getAttribute('onclick'),
+            href: boton.getAttribute('href'),
+            formaction: boton.getAttribute('formaction'),
+            type: boton.getAttribute('type'),
+            form: boton.getAttribute('form')
+          };
+        }, botonCertificado);
+        
+        console.log('🔍 Información del botón:', accionBoton);
+        
+        // Si el botón tiene una acción directa, podemos intentar obtener la URL
+        if (accionBoton && accionBoton.onclick && (accionBoton.onclick.includes('window.open') || accionBoton.onclick.includes('http'))) {
+          // Extraer URL del onclick
+          const urlMatch = accionBoton.onclick.match(/(https?:\/\/[^"']+)/);
+          if (urlMatch) {
+            urlCertificado = urlMatch[1];
+            console.log(`🔗 URL del certificado encontrada: ${urlCertificado}`);
+          }
+        }
+        
+        console.log('👆 Botón disponible para click manual');
+        
+      } else {
+        console.log('❌ No se encontró el botón "Visualizar Certificado"');
+      }
+      
+    } catch (certificadoError) {
+      console.log('⚠️ Error al buscar certificado:', certificificadoError.message);
+    }
 
     const datosAntecedentes = {
       cedula,
-      nombre: nombre.trim(),
+      nombre: nombreRaw.trim() || 'Nombre no disponible',
       resultado: resultadoFormateado,
       tieneAntecedentes,
       fechaConsulta: new Date(),
       estado: 'exitoso',
+      tieneBotonCertificado: tieneBotonCertificado,
+      urlCertificado: urlCertificado,
+      certificadoPdf: null,
+      tieneCertificado: false
     };
 
-    console.log(`✅ Consulta completada para ${nombre.trim()}: ${resultadoFormateado}`);
+    // --- Guardar en BD ---
+    try {
+      await DatabaseOperations.upsert(Collections.ANTECEDENTES_PENALES, { cedula }, datosAntecedentes);
+      console.log(`💾 Datos guardados en base de datos: ${nombreRaw.trim()}`);
+    } catch (dbError) {
+      console.log('⚠️ Error al guardar en BD:', dbError.message);
+    }
 
-    // Guardar en base de datos
-    await DatabaseOperations.upsert(
-      Collections.ANTECEDENTES_PENALES,
-      { cedula },
-      datosAntecedentes
-    );
-
-    console.log(`💾 Datos guardados en base de datos para la cédula ${cedula}`);
+    console.log(`📊 Botón certificado: ${tieneBotonCertificado ? 'DISPONIBLE' : 'NO DISPONIBLE'}`);
 
     await browser.close();
-    return datosAntecedentes;
+
+    return {
+      success: true,
+      ...datosAntecedentes
+    };
 
   } catch (error) {
-    console.error("\n❌ Error en obtenerAntecedentesPenales:", error.message);
-
-    await ErrorLogsModel.saveError(
-      'antecedentes-penales',
-      cedula,
-      'error_general',
-      {
-        mensaje: error.message || 'Error al consultar antecedentes penales',
-        stack: error.stack,
-        tipo: error.name || 'Error',
-      }
-    ).catch(err => console.warn('⚠️ Error guardando log:', err.message));
-
-    if (browser) {
-      await browser.close();
-    }
+    console.error('❌ Error en obtenerAntecedentesPenales:', error.message);
+    if (browser) await browser.close();
 
     return {
       success: false,
