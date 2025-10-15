@@ -32,5 +32,5 @@ sleep 2
 # Inicia websockify:
 # Configurar la ruta de noVNC cuando sea necesario, también configurar la IP según el servidor
 
-websockify --web=/usr/share/novnc --verbose 6080 localhost:5900 2>/tmp/websockify.log &
+websockify --web=/usr/share/novnc --verbose 6080 18.117.79.180:5900 2>/tmp/websockify.log &
 sleep 2

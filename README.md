@@ -90,7 +90,7 @@ DB_NAME=webScraping
 PORT=3001
 
 # Para desarrollo local (comentar las líneas de arriba y descomentar estas)
-# MONGODB_URI=mongodb://localhost:27017
+# MONGODB_URI=mongodb://18.117.79.180:27017
 # DB_NAME=webScraping
 # PORT=3001
 ```
@@ -165,7 +165,7 @@ WorkingDirectory=/home/andre/Practicas_Tikee/webScrapping/WebScraping/Backend
 Environment=HOME=/home/andre
 Environment=DISPLAY=:99
 
-# Ajusta la configuración de novnc de localhost a la ip del servidor en caso de producción
+# Ajusta la configuración de novnc de 18.117.79.180 a la ip del servidor en caso de producción
 # En caso de ser necesario modifica el puerto 5900 al por defecto de novnc 6080
 ExecStart=/bin/bash -c '\
     Xvfb :99 -screen 0 1280x800x24 & \
@@ -174,7 +174,7 @@ ExecStart=/bin/bash -c '\
     sleep 3 && \
     x11vnc -display :99 -auth $HOME/.Xauthority -nopw -listen 0.0.0.0 -forever -shared & \
     sleep 3 && \
-    cd /home/TU_USUARIO/noVNC && ./utils/novnc_proxy --listen [IP_DEL_SERVIDOR]:6080 --vnc localhost:5900 & \
+    cd /home/TU_USUARIO/noVNC && ./utils/novnc_proxy --listen [IP_DEL_SERVIDOR]:6080 --vnc 18.117.79.180:5900 & \
     sleep 3 && \
     npm start \
 '

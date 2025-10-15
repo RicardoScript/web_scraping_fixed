@@ -21,8 +21,8 @@ async function startServer() {
     await initializeDatabase()
     
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor backend ejecutándose en http://localhost:${PORT}`)
-      console.log(`📄 API Health: http://localhost:${PORT}/api/health`)
+      console.log(`🚀 Servidor backend ejecutándose en http://18.117.79.180:${PORT}`)
+      console.log(`📄 API Health: http://18.117.79.180:${PORT}/api/health`)
       console.log(`💾 Base de datos conectada correctamente`)
     })
   } catch (error) {

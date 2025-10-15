@@ -8,7 +8,7 @@ if [ -f .env ]; then
 fi
 
 # Establecer valores por defecto
-SERVER_IP=${SERVER_IP:-localhost}
+SERVER_IP=${SERVER_IP:-18.117.79.180}
 FRONTEND_PORT=${FRONTEND_PORT:-80}
 MONGODB_PORT=${MONGODB_PORT:-27018}
 VNC_PORT=${VNC_PORT:-6080}

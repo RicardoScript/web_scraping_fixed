@@ -23,8 +23,8 @@ services:
       context: "./WebScraping/Frontend"
       dockerfile: Dockerfile
       args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3001}
-        - VITE_VNC_URL=${VITE_VNC_URL:-http://localhost:6080}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://18.117.79.180:3001}
+        - VITE_VNC_URL=${VITE_VNC_URL:-http://18.117.79.180:6080}
     container_name: web-scraping-frontend
     restart: unless-stopped
     ports:
@@ -32,7 +32,7 @@ services:
     networks:
       - web-scraping-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://18.117.79.180:80"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -17,9 +17,9 @@ switch ($action) {
         Write-Host "=== Iniciando servicios ===" -ForegroundColor Green
         docker-compose up -d
         Write-Host "`nServicios disponibles:" -ForegroundColor Cyan
-        Write-Host "Frontend: http://localhost" -ForegroundColor White
-        Write-Host "Backend: http://localhost:3001" -ForegroundColor White
-        Write-Host "MongoDB: mongodb://localhost:27017" -ForegroundColor White
+        Write-Host "Frontend: http://18.117.79.180" -ForegroundColor White
+        Write-Host "Backend: http://18.117.79.180:3001" -ForegroundColor White
+        Write-Host "MongoDB: mongodb://18.117.79.180:27017" -ForegroundColor White
     }
     "down" {
         Write-Host "=== Deteniendo servicios ===" -ForegroundColor Red
@@ -34,7 +34,7 @@ switch ($action) {
         
         Write-Host "`nProbando frontend..." -ForegroundColor Yellow
         try {
-            $response = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 5
+            $response = Invoke-WebRequest -Uri "http://18.117.79.180" -UseBasicParsing -TimeoutSec 5
             Write-Host "Frontend: OK (Status: $($response.StatusCode))" -ForegroundColor Green
         } catch {
             Write-Host "Frontend: Error - $($_.Exception.Message)" -ForegroundColor Red
@@ -42,7 +42,7 @@ switch ($action) {
         
         Write-Host "`nProbando backend..." -ForegroundColor Yellow
         try {
-            $response = Invoke-WebRequest -Uri "http://localhost:3001/api/health" -UseBasicParsing -TimeoutSec 5
+            $response = Invoke-WebRequest -Uri "http://18.117.79.180:3001/api/health" -UseBasicParsing -TimeoutSec 5
             Write-Host "Backend: OK (Status: $($response.StatusCode))" -ForegroundColor Green
         } catch {
             Write-Host "Backend: Error - $($_.Exception.Message)" -ForegroundColor Red

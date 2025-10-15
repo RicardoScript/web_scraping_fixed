@@ -6,7 +6,7 @@ param(
 
 # Cargar variables de entorno desde .env si existe
 $envFile = ".env"
-$ServerIP = "localhost"
+$ServerIP = "18.117.79.180"
 $FrontendPort = "80"
 $MongoPort = "27018"
 $VncPort = "6080"

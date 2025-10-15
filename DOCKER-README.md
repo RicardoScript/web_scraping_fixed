@@ -42,8 +42,8 @@ docker-compose down
 
 Una vez que los contenedores estén ejecutándose:
 
-- **Frontend**: http://localhost:81
-- **MongoDB**: mongodb://localhost:27017
+- **Frontend**: http://18.117.79.180:81
+- **MongoDB**: mongodb://18.117.79.180:27017
 
 ## 📊 Servicios Incluidos
 
