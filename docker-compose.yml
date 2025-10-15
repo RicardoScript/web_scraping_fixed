@@ -1,45 +1,68 @@
-services:
-  mongodb:
-    image: mongo:7.0
-    container_name: web-scraping-mongodb
-    restart: unless-stopped
-    ports:
-      - "${MONGODB_PORT:-27018}:27017"
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      - MONGO_INITDB_DATABASE=${MONGODB_DATABASE:-webScraping}
-    networks:
-      - web-scraping-network
-    command: mongod --noauth
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+version: "3.9"
 
-  frontend:
-    build:
-      context: "./WebScraping/Frontend"
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://18.117.79.180:3001}
-        - VITE_VNC_URL=${VITE_VNC_URL:-http://18.117.79.180:6080}
-    container_name: web-scraping-frontend
-    restart: unless-stopped
+services:
+  # ==========================
+  # MongoDB
+  # ==========================
+  mongo:
+    image: mongo:6
+    container_name: mongo_db
+    restart: always
+    volumes:
+      - mongo_data:/data/db
     ports:
-      - "0.0.0.0:${FRONTEND_PORT:-80}:80"
-    networks:
-      - web-scraping-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://18.117.79.180:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - "27018:27017"
+
+  # ==========================
+  # Backend (Node.js + Playwright)
+  # ==========================
+  backend:
+    build: ./Backend
+    container_name: webscraping_backend
+    restart: always
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/webScraping
+      - PORT=3001
+      - SERVER_IP=18.117.79.180
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./Backend:/app
+    shm_size: 1gb  # necesario si usas Playwright o Chromium
+
+  # ==========================
+  # Frontend (Vite + Nginx)
+  # ==========================
+  frontend:
+    build: ./Frontend
+    container_name: webscraping_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_BASE_URL=http://18.117.79.180:3001
+      - VITE_VNC_URL=http://18.117.79.180:6080
+
+  # ==========================
+  # VNC (Visualizador del navegador)
+  # ==========================
+  vnc:
+    image: dorowu/ubuntu-desktop-lxde-vnc
+    container_name: vnc_server
+    restart: always
+    ports:
+      - "6080:80"      # puerto VNC Web (http://IP:6080)
+    environment:
+      - USER=ricardo
+      - PASSWORD=1234
+    volumes:
+      - ./vnc_data:/home/ricardo
+    shm_size: 1gb
 
 volumes:
-  mongodb_data:
-
-networks:
-  web-scraping-network:
-    driver: bridge
+  mongo_data:
+  vnc_data:
