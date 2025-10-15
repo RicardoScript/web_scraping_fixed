@@ -6,8 +6,8 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Declarar argumentos de build para las variables de entorno
-ARG VITE_API_BASE_URL=http://localhost:3001
-ARG VITE_VNC_URL=http://localhost:6080
+ARG VITE_API_BASE_URL=http://18.117.79.180:3001
+ARG VITE_VNC_URL=http://18.117.79.180:6080
 
 # Convertir argumentos en variables de entorno para el build
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
