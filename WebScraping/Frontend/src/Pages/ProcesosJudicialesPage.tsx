@@ -54,7 +54,7 @@ export function ProcesosJudicialesPage() {
     setNoResults(false)
 
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://18.217.24.122:3000";
       const response = await fetch(`${apiBaseUrl}/api/procesos-judiciales`, {
         method: "POST",
         headers: {

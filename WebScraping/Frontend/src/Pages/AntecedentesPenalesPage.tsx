@@ -86,7 +86,7 @@ export function AntecedentesPenalesPage() {
     }
 
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://18.217.24.122:3000";
       console.log('🔄 Consultando API en:', `${apiBaseUrl}/api/antecedentes-penales`);
       
       const response = await fetch(`${apiBaseUrl}/api/antecedentes-penales`, {
