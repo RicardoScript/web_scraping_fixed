@@ -1,5 +1,4 @@
 # Variables de entorno (contienen información sensible)
-.env
 .env.local
 .env.production
 .env.development
