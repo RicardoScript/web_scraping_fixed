@@ -2,12 +2,8 @@
 node_modules
 npm-debug.log*
 
-# Build output que NO necesitamos copiar al contenedor
-.next
-.nuxt
-coverage
-
-# Environment variables (no subir)
+# Environment variables
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -28,13 +24,13 @@ Thumbs.db
 # Docker
 .dockerignore
 
+# Logs
+logs
+*.log
+
 # Testing
 __tests__
 *.test.js
 *.test.ts
 *.spec.js
 *.spec.ts
-
-# Logs
-logs
-*.log
