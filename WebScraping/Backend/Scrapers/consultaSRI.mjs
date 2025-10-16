@@ -61,7 +61,7 @@ export const obtenerDatosRuc = async (ruc) => {
     // Verificar si hay reCAPTCHA o bloqueo
     if (contribuyenteResponse.text.includes('recaptcha') || contribuyenteResponse.text.includes('g-recaptcha') || contribuyenteResponse.text.includes('The requested URL was rejected')) {
       console.log('⚠️ reCAPTCHA o bloqueo detectado. Cargando formulario para resolución manual...');
-      console.log('Abre http://18.117.79.180:6080/vnc.html para resolver el CAPTCHA manualmente.');
+      console.log('Abre http://18.217.24.122:6080/vnc.html para resolver el CAPTCHA manualmente.');
 
       // Llenar el formulario y simular consulta
       await page.type('input[name="numRuc"]', ruc);
@@ -101,7 +101,7 @@ export const obtenerDatosRuc = async (ruc) => {
         return {
           success: false,
           error: 'captcha_required',
-          message: 'Se detectó un CAPTCHA. Por favor, resuélvelo manualmente en http://18.117.79.180:6080/vnc.html',
+          message: 'Se detectó un CAPTCHA. Por favor, resuélvelo manualmente en http://18.217.24.122:6080/vnc.html',
         };
       }
     }
@@ -140,7 +140,7 @@ export const obtenerDatosRuc = async (ruc) => {
 
     if (establecimientosResponse.text.includes('recaptcha') || establecimientosResponse.text.includes('g-recaptcha') || establecimientosResponse.text.includes('The requested URL was rejected')) {
       console.log('⚠️ reCAPTCHA o bloqueo detectado en establecimientos. Cargando formulario para resolución manual...');
-      console.log('Abre http://18.117.79.180:6081/vnc.html para resolver el CAPTCHA manualmente.');
+      console.log('Abre http://18.217.24.122:6081/vnc.html para resolver el CAPTCHA manualmente.');
 
       await page.goto('https://srienlinea.sri.gob.ec/sri-en-linea/SriRucWeb/ConsultaRuc/Consultas/consultaRuc', { waitUntil: 'networkidle2' });
       await page.type('input[name="numRuc"]', ruc);
@@ -179,7 +179,7 @@ export const obtenerDatosRuc = async (ruc) => {
         return {
           success: false,
           error: 'captcha_required',
-          message: 'Se detectó un CAPTCHA. Por favor, resuélvelo manualmente en http://18.117.79.180:6081/vnc.html',
+          message: 'Se detectó un CAPTCHA. Por favor, resuélvelo manualmente en http://18.217.24.122:6081/vnc.html',
         };
       }
     }
